@@ -1,0 +1,1 @@
+/home/ajil/os_test/target/riscv64gc-unknown-none-elf/release/os_test: /home/ajil/os_test/src/console.rs /home/ajil/os_test/src/entry.asm /home/ajil/os_test/src/lang_items.rs /home/ajil/os_test/src/log.rs /home/ajil/os_test/src/main.rs /home/ajil/os_test/src/sbi.rs
