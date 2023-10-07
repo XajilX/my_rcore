@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 #[inline(always)]
 
 pub fn cputchar(c: usize) {

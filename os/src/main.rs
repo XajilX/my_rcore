@@ -6,12 +6,17 @@ mod sbi;
 #[macro_use]
 mod console;
 mod logging;
+mod batch;
+mod uthr;
+
+use log::warn;
 use core::arch::global_asm;
 global_asm!(include_str!("entry.asm"));
 
 #[no_mangle]
 pub fn rust_main() -> ! {
     clr_bss();
+    logging::init();
     warn!("Hello world!");
     panic!("Shutdown! ");
 }
