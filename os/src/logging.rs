@@ -13,7 +13,7 @@ impl Log for SimLogger {
             Level::Trace => 90
         };
         println!(
-            "\x1b[{}m[{:>5}] {}\x1b0[m",
+            "\x1b[{}m[{:>5}] {}\x1b[0m",
             color,
             record.level(),
             record.args()
