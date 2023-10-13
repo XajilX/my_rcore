@@ -1,7 +1,7 @@
 use core::arch::global_asm;
-use riscv::register::{stvec, utvec::TrapMode, scause::{self, Trap, Exception}, stval};
+use riscv::register::{stvec, utvec::TrapMode, scause::{self, Trap, Exception, Interrupt}, stval, sie};
 
-use crate::{syscall::syscall, batch::run_app};
+use crate::{syscall::syscall, timer::set_trig, task::{suspend_curr_task, exit_curr_task}};
 
 use self::context::TrapContext;
 pub mod context;
@@ -12,6 +12,10 @@ pub fn init() {
     unsafe {
         stvec::write(__trap_entry as usize, TrapMode::Direct);
     }
+}
+
+pub fn enable_timer_int() {
+    unsafe { sie::set_stimer(); }
 }
 
 #[no_mangle]
@@ -25,16 +29,19 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
                 cx.reg[17],
                 [cx.reg[10], cx.reg[11], cx.reg[12]]
             ) as usize;
-            cx
+        }
+        Trap::Interrupt(Interrupt::SupervisorTimer) => {
+            set_trig();
+            suspend_curr_task()
         }
         Trap::Exception(Exception::StoreFault) |
         Trap::Exception(Exception::StorePageFault) => {
             println!("[kernel] PageFault in app, kernel execution. ");
-            run_app()
+            exit_curr_task()
         }
         Trap::Exception(Exception::IllegalInstruction) => {
             println!("[kernel] IllegalInstruction in app, kernel execution. ");
-            run_app()
+            exit_curr_task()
         }
         _ => {
             panic!(
@@ -43,5 +50,6 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
                 stval_v
             )
         }
-    }
+    };
+    cx
 }

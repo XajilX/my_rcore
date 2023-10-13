@@ -1,15 +1,19 @@
 #![no_std]
 #![no_main]
 #![feature(panic_info_message)]
-mod lang_items;
-mod sbi;
 #[macro_use]
 mod console;
+mod lang_items;
+mod stack_trace;
+mod sbi;
 mod logging;
-mod batch;
+mod loader;
+mod task;
 mod uthr;
 mod trap;
 mod syscall;
+mod config;
+mod timer;
 
 use core::arch::global_asm;
 global_asm!(include_str!("entry.asm"));
@@ -20,8 +24,11 @@ pub fn rust_main() -> ! {
     clr_bss();
     logging::init();
     trap::init();
-    batch::init();
-    batch::run_app();
+    loader::load_apps();
+    trap::enable_timer_int();
+    timer::set_trig();
+    task::run_first_task();
+    unreachable!()
 }
 
 fn clr_bss() {
