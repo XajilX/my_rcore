@@ -40,7 +40,7 @@ static USER_STACK: [UserStack; MAX_APP_NUM] = [UserStack {
     data: [0; USER_STACK_SIZE]
 }; MAX_APP_NUM];
 
-pub fn get_id_base(app_id: usize) -> usize {
+fn get_id_base(app_id: usize) -> usize {
     APP_BASE_ADDR + app_id * APP_SIZE_LIM
 }
 
@@ -48,17 +48,6 @@ pub fn get_num_app() -> usize {
     extern "C" { fn _num_app(); }
     unsafe {
         (_num_app as *const usize).read_volatile()
-    }
-}
-
-pub fn get_id_len(app_id: usize) -> usize {
-    extern "C" { fn _num_app(); }
-    let app_ptr = _num_app as *const usize;
-    let num_app = unsafe { app_ptr.read_volatile() };
-    unsafe {
-        core::slice::from_raw_parts(
-            app_ptr.add(1), num_app
-        )[app_id]
     }
 }
 

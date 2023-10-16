@@ -4,7 +4,7 @@ pub mod task;
 
 use lazy_static::lazy_static;
 use log::info;
-use crate::loader::{get_num_app, init_app_cx, get_id_len, get_id_base};
+use crate::loader::{get_num_app, init_app_cx};
 use crate::task::context::TaskContext;
 use crate::task::task::TaskStatus;
 use crate::uthr::UThrCell;
@@ -14,7 +14,6 @@ use self::task::TaskControlBlock;
 
 pub struct TaskMan {
     num_app: usize,
-    app_range: [(usize, usize); MAX_APP_NUM],
     mut_part: UThrCell<TaskManMutPart>
 }
 struct TaskManMutPart {
@@ -67,10 +66,6 @@ impl TaskMan {
         }
         unreachable!()
     }
-    fn mem_range_curr_task(&self) -> (usize, usize) {
-        let mut_part = self.mut_part.get_refmut();
-        self.app_range[mut_part.curr_task]
-    }
 }
 
 lazy_static! {
@@ -83,16 +78,12 @@ lazy_static! {
             };
             MAX_APP_NUM
         ];
-        let mut app_range = [(0usize, 0usize); MAX_APP_NUM];
         for i in 0..num_app {
             tasks[i].task_cx = TaskContext::to_restore(init_app_cx(i));
             tasks[i].task_status = TaskStatus::Ready;
-            let (app_start, app_len) = (get_id_base(i), get_id_len(i));
-            app_range[i] = (app_start, app_start + app_len);
         }
         TaskMan {
             num_app,
-            app_range,
             mut_part: unsafe {
                 UThrCell::new(TaskManMutPart {
                     curr_task: 0,
@@ -115,8 +106,4 @@ pub fn exit_curr_task() {
 
 pub fn run_first_task() {
     TASK_MAN.run_first();
-}
-
-pub fn mem_range_curr_task() -> (usize, usize) {
-    TASK_MAN.mem_range_curr_task()
 }
