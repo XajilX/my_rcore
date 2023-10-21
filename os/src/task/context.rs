@@ -1,3 +1,5 @@
+use crate::trap::trap_ret;
+
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct TaskContext {
@@ -13,11 +15,10 @@ impl TaskContext {
             sreg: [0; 12]
         }
     }
-    pub fn to_restore(kern_ptr: usize) -> Self {
-        extern "C" { fn __restore(); }
+    pub fn to_trap_ret(kern_sp: usize) -> Self {
         Self {
-            ra: __restore as usize,
-            sp: kern_ptr,
+            ra: trap_ret as usize,
+            sp: kern_sp,
             sreg: [0; 12]
         }
     }

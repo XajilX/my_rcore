@@ -1,4 +1,5 @@
 mod process;
+use log::debug;
 use process::*;
 
 mod write;
@@ -10,6 +11,7 @@ const SYSCALL_YIELD: usize = 124;
 const SYSCALL_GET_TIME: usize = 169;
 
 pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
+    debug!("syscall catched, id: {syscall_id}");
     match syscall_id {
         SYSCALL_WRITE => sys_write(args[0], args[1] as *const u8, args[2]),
         SYSCALL_EXIT => sys_exit(args[0] as i32),

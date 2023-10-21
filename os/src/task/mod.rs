@@ -2,13 +2,14 @@ pub mod switch;
 pub mod context;
 pub mod task;
 
+use alloc::vec::Vec;
 use lazy_static::lazy_static;
-use log::info;
-use crate::loader::{get_num_app, init_app_cx};
+use log::{info, debug};
+use crate::loader::{get_num_app, get_app_data};
 use crate::task::context::TaskContext;
 use crate::task::task::TaskStatus;
+use crate::trap::context::TrapContext;
 use crate::uthr::UThrCell;
-use crate::config::MAX_APP_NUM;
 use self::switch::__switch;
 use self::task::TaskControlBlock;
 
@@ -18,9 +19,19 @@ pub struct TaskMan {
 }
 struct TaskManMutPart {
     curr_task: usize,
-    tcb: [TaskControlBlock; MAX_APP_NUM]
+    tcb: Vec<TaskControlBlock>
 }
 impl TaskMan {
+    fn get_curr_atp_token(&self) -> usize {
+        let mut_part = self.mut_part.get_refmut();
+        let curr = mut_part.curr_task;
+        mut_part.tcb[curr].memset.get_atp_token()
+    }
+    fn get_curr_trap_cx(&self) -> &mut TrapContext {
+        let mut_part = self.mut_part.get_refmut();
+        let curr = mut_part.curr_task;
+        mut_part.tcb[curr].get_trap_cx()
+    }
     fn mark_curr_task(&self, mark: TaskStatus) {
         let mut mut_part = self.mut_part.get_refmut();
         let curr = mut_part.curr_task;
@@ -34,6 +45,11 @@ impl TaskMan {
             .find(|id| {
                 mut_part.tcb[*id].task_status == TaskStatus::Ready
             })
+    }
+    fn mem_recycle_curr(&self) {
+        let mut mut_part = self.mut_part.get_refmut();
+        let curr = mut_part.curr_task;
+        mut_part.tcb[curr].memset.mem_recycle()
     }
     fn run_next(&self) {
         if let Some(next_id) = self.find_next() {
@@ -53,10 +69,11 @@ impl TaskMan {
         }
     }
     fn run_first(&self) -> ! {
+        debug!("Now run first task");
         let mut mut_part = self.mut_part.get_refmut();
         mut_part.tcb[0].task_status = TaskStatus::Running;
         let next_task_cx_ptr = &mut_part.tcb[0].task_cx as *const TaskContext;
-        let mut _plh = TaskContext::zeros();
+        let mut _plh = TaskContext::zeros();    //  placeholder
         drop(mut_part);
         unsafe {
             __switch(
@@ -71,16 +88,13 @@ impl TaskMan {
 lazy_static! {
     pub static ref TASK_MAN: TaskMan = {
         let num_app = get_num_app();
-        let mut tasks = [
-            TaskControlBlock {
-                task_status: TaskStatus::Uninit,
-                task_cx: TaskContext::zeros()
-            };
-            MAX_APP_NUM
-        ];
+        println!("[kernel] num_app = {}", num_app);
+        let mut tasks: Vec<TaskControlBlock> = Vec::new();
+        debug!("Now load appdata");
         for i in 0..num_app {
-            tasks[i].task_cx = TaskContext::to_restore(init_app_cx(i));
-            tasks[i].task_status = TaskStatus::Ready;
+            tasks.push(TaskControlBlock::new(
+                get_app_data(i), i
+            ));
         }
         TaskMan {
             num_app,
@@ -101,9 +115,16 @@ pub fn suspend_curr_task() {
 
 pub fn exit_curr_task() {
     TASK_MAN.mark_curr_task(TaskStatus::Exited);
+    TASK_MAN.mem_recycle_curr();
     TASK_MAN.run_next();
 }
 
 pub fn run_first_task() {
     TASK_MAN.run_first();
+}
+pub fn curr_atp_token() -> usize {
+    TASK_MAN.get_curr_atp_token()
+}
+pub fn curr_trap_cx() -> &'static mut TrapContext {
+    TASK_MAN.get_curr_trap_cx()
 }

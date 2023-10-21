@@ -6,10 +6,10 @@
     ld x\n, \n*8(sp)
 .endm
 
-.align 2
+    .section .text.trampoline
+    .align 2
 __trap_entry:
     csrrw sp, sscratch, sp
-    addi sp, sp, -34*8
     sd x1, 8(sp)
     sd x3, 24(sp)
     .set n, 5
@@ -23,16 +23,27 @@ __trap_entry:
     sd t1, 33*8(sp)
     csrr t2, sscratch
     sd t2, 16(sp)
-    mv a0, sp
-    call trap_handler
+    # satp
+    ld t0, 34*8(sp)
+    # trap_handler
+    ld t1, 36*8(sp)
+    # kernel sp
+    ld sp, 35*8(sp)
+    # switch to kernel sapce
+    csrw satp, t0
+    sfence.vma
+    jr t1
 
 __restore:
+    # switch to user space
+    csrw satp, a1
+    sfence.vma
+    csrw sscratch, a0
+    mv sp, a0
     ld t0, 32*8(sp)
     ld t1, 33*8(sp)
-    ld t2, 16(sp)
     csrw sstatus, t0
     csrw sepc, t1
-    csrw sscratch, t2
     ld x1, 8(sp)
     ld x3, 24(sp)
     .set n, 5
@@ -40,6 +51,5 @@ __restore:
         LOAD_GP %n
         .set n, n+1
     .endr
-    addi sp, sp, 34*8
-    csrrw sp, sscratch, sp
+    ld sp, 16(sp)
     sret

@@ -15,12 +15,14 @@ __switch:
     .set n, 0
     .rept 12
         SAVE_SN %n
+        .set n, n+1
     .endr
     # restore next task context
     ld ra, 0(a1)
     .set n, 0
     .rept 12
         LOAD_SN %n
+        .set n, n+1
     .endr
     ld sp, 8(a1)
     ret

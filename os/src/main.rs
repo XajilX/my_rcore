@@ -1,6 +1,9 @@
 #![no_std]
 #![no_main]
 #![feature(panic_info_message)]
+#![feature(alloc_error_handler)]
+extern crate alloc;
+
 #[macro_use]
 mod console;
 mod lang_items;
@@ -14,6 +17,7 @@ mod trap;
 mod syscall;
 mod config;
 mod timer;
+mod mm;
 
 use core::arch::global_asm;
 global_asm!(include_str!("entry.asm"));
@@ -22,11 +26,17 @@ global_asm!(include_str!("link_app.S"));
 #[no_mangle]
 pub fn rust_main() -> ! {
     clr_bss();
+    println!("[kernel] Hello, world!");
     logging::init();
+    println!("[kernel] start memory initialize");
+    mm::init();
+    println!("[kernel] memory space initialized successfully");
+    mm::remap_test();
     trap::init();
-    loader::load_apps();
+    println!("[kernel] trap entry set");
     trap::enable_timer_int();
     timer::set_trig();
+    println!("[kernel] timer interrupt enabled");
     task::run_first_task();
     unreachable!()
 }
