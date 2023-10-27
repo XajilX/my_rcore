@@ -79,9 +79,6 @@ impl From<Range<usize>> for VirtPageRange {
     }
 }
 impl VirtPageRange {
-    pub fn new(vpn_l: VirtPageNum, vpn_r: VirtPageNum) -> Self {
-        Self { start: vpn_l, end: vpn_r }
-    }
     pub fn from_va_range(va_range: Range<VirtAddr>) -> Self {
         Self { start: va_range.start.vpn_floor(), end: va_range.end.vpn_ceil() }
     }
@@ -92,6 +89,9 @@ impl PhysAddr {
     pub fn page_offset(&self) -> usize { self.0 & PAGE_OFFSET_MASK }
     pub fn ppn_floor(&self) -> PhysPageNum { (self.0 >> PAGE_SIZE_BITS).into() }
     pub fn ppn_ceil(&self) -> PhysPageNum { ((self.0 + PAGE_OFFSET_MASK) >> PAGE_SIZE_BITS).into() }
+    pub fn get_mut<T>(&self) -> &'static mut T {
+        unsafe { (self.0 as *mut T).as_mut().unwrap() }
+    }
 }
 impl VirtAddr {
     pub fn page_offset(&self) -> usize { self.0 & PAGE_OFFSET_MASK }
@@ -119,9 +119,7 @@ impl PhysPageNum {
     }
     pub fn get_mut<T>(&self) -> &'static mut T {
         let pa: PhysAddr = (*self).into();
-        unsafe {
-            (pa.0 as *mut T).as_mut().unwrap()
-        }
+        pa.get_mut()
     }
 }
 impl VirtPageNum {

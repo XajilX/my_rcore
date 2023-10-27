@@ -88,4 +88,20 @@ impl MapArea {
             curr_vpn.0 += 1;
         }
     }
+    pub fn get_vpn_range(&self) -> VirtPageRange {
+        self.range
+    }
+    pub fn get_start_vpn(&self) -> VirtPageNum {
+        self.range.start
+    }
+}
+impl Clone for MapArea {
+    fn clone(&self) -> Self {
+        Self {
+            range: self.range.clone(),
+            frames: BTreeMap::new(),
+            map_type: self.map_type,
+            map_perm: self.map_perm
+        }
+    }
 }

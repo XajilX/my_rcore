@@ -32,12 +32,15 @@ pub fn rust_main() -> ! {
     mm::init();
     println!("[kernel] memory space initialized successfully");
     mm::remap_test();
+    task::add_initproc();
+    println!("[kernel] initproc added");
     trap::init();
     println!("[kernel] trap entry set");
     trap::enable_timer_int();
     timer::set_trig();
     println!("[kernel] timer interrupt enabled");
-    task::run_first_task();
+    loader::list_apps();
+    task::processor::run_proc();
     unreachable!()
 }
 

@@ -1,7 +1,7 @@
 use core::arch::{global_asm, asm};
 use riscv::register::{stvec, utvec::TrapMode, scause::{self, Trap, Exception, Interrupt}, stval, sie};
 
-use crate::{syscall::syscall, timer::set_trig, task::{suspend_curr_task, exit_curr_task, curr_trap_cx, curr_atp_token}, config::{ADDR_TRAMPOLINE, ADDR_TRAPCONTEXT}};
+use crate::{syscall::syscall, timer::set_trig, task::{suspend_curr_task, processor::{curr_trap_cx, curr_atp_token}, exit_curr_task}, config::{ADDR_TRAMPOLINE, ADDR_TRAPCONTEXT}};
 
 pub mod context;
 global_asm!(include_str!("trap.S"));
@@ -27,35 +27,43 @@ fn set_user_trap_entry() {
 
 #[no_mangle]
 pub fn trap_from_kern() -> ! {
-    panic!("Trap from kernel, shutdown");
+    let scause_v = scause::read();
+    panic!("Trap from kernel caused by {:?}, shutdown", scause_v.cause());
 }
 
 #[no_mangle]
 pub fn trap_handler() -> ! {
     set_kern_trap_entry();
-    let cx = curr_trap_cx();
     let scause_v = scause::read();
     let stval_v = stval::read();
     match scause_v.cause() {
         Trap::Exception(Exception::UserEnvCall) => {
+            let mut cx = curr_trap_cx();
             cx.sepc += 4;
-            cx.reg[10] = syscall(
+            let ret = syscall(
                 cx.reg[17],
                 [cx.reg[10], cx.reg[11], cx.reg[12]]
             ) as usize;
+            //  cx may change when calling sys_exec
+            cx = curr_trap_cx();
+            cx.reg[10] = ret;
         }
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
             set_trig();
             suspend_curr_task()
         }
         Trap::Exception(Exception::StoreFault) |
-        Trap::Exception(Exception::StorePageFault) => {
-            println!("[kernel] PageFault in app, kernel execution. ");
-            exit_curr_task()
+        Trap::Exception(Exception::StorePageFault) |
+        Trap::Exception(Exception::LoadFault) |
+        Trap::Exception(Exception::LoadPageFault) |
+        Trap::Exception(Exception::InstructionFault) |
+        Trap::Exception(Exception::InstructionPageFault) => {
+            println!("[kernel] {:?} in app, bad addr = {:#x}, kernel execution. ", scause_v.cause(), stval_v);
+            exit_curr_task(-2)
         }
         Trap::Exception(Exception::IllegalInstruction) => {
             println!("[kernel] IllegalInstruction in app, kernel execution. ");
-            exit_curr_task()
+            exit_curr_task(-3)
         }
         _ => {
             panic!(

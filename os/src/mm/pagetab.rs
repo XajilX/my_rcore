@@ -1,11 +1,11 @@
-use alloc::vec;
+use alloc::{vec, string::String};
 use alloc::vec::Vec;
 use bitflags::*;
-use log::debug;
+use log::{debug, trace};
 
-use crate::config::PAGE_SIZE;
+use crate::config::{PAGE_SIZE, PAGE_SIZE_BITS};
 
-use super::{address::{PhysPageNum, PPN_MASK, VirtPageNum, VirtAddr}, frame_allocator::{FrameTracker, frame_alloc}};
+use super::{address::{PhysPageNum, PPN_MASK, VirtPageNum, VirtAddr, PhysAddr}, frame_allocator::{FrameTracker, frame_alloc}};
 
 bitflags! {
     pub struct PTEFlags: u8 {
@@ -66,12 +66,14 @@ impl PageTab {
     }
     pub fn ins(&mut self, vpn: VirtPageNum, ppn: PhysPageNum, flags: PTEFlags) {
         let pte = self.find_pte_create(vpn).unwrap();
-        assert!(!pte.is_valid(), "vpn {:?} already exists in page table. ", vpn);
+        assert!(!pte.is_valid(), "vpn {:?} already exists in page table, ppn = {:?}, flag = {:?}. ", vpn, pte.ppn(), pte.flags());
+        trace!("map {:?} to {:?}", vpn, ppn);
         *pte = PageTabEntry::new(ppn, PTEFlags::V | flags);
     }
     pub fn del(&mut self, vpn: VirtPageNum) {
         let pte = self.find_pte(vpn).unwrap();
         assert!(pte.is_valid(), "vpn {:?} already invalid", vpn);
+        trace!("unmap {:?} to {:?}", vpn, pte.ppn());
         *pte = PageTabEntry::zeros();
     }
     pub fn from_token(satp: usize) -> Self {
@@ -83,10 +85,30 @@ impl PageTab {
     pub fn find(&self, vpn: VirtPageNum) -> Option<PageTabEntry> {
         self.find_pte(vpn).map(|pte| pte.clone())
     }
-    pub fn trans_bytes_buffer(&self, ptr: *const u8, len: usize) -> Vec<&'static [u8]> {
+    pub fn trans_va(&self, va: VirtAddr) -> Option<PhysAddr> {
+        let ppn = self.find(va.vpn_floor()).map(|pte| pte.ppn())?;
+        let offset = va.page_offset();
+        Some(PhysAddr::from((ppn.0 << PAGE_SIZE_BITS) | offset))
+    }
+    pub fn trans_cstr(&self, ptr: *const u8) -> String {
+        let mut string = String::new();
+        let mut va = VirtAddr::from(ptr as usize);
+        loop {
+            trace!("translate c_str in {:?}", va);
+            let ch: u8 = *(self.trans_va(va).unwrap().get_mut());
+            if ch == 0 {
+                break;
+            } else {
+                string.push(ch as char);
+                va.0 += 1;
+            }
+        }
+        string
+    }
+    pub fn trans_bytes_buffer(&self, ptr: *const u8, len: usize) -> Vec<&'static mut [u8]> {
         let mut va_start = VirtAddr::from(ptr as usize);
         let va_end = VirtAddr(va_start.0 + len);
-        let mut ret: Vec<&[u8]> = Vec::new();
+        let mut ret = Vec::new();
         while va_start < va_end {
             let vpn = va_start.vpn_floor();
             let ppn = self
@@ -139,8 +161,10 @@ impl PageTab {
             ppn = pte.ppn();
             res = Some(pte);
         }
+        if let Some(pte) = &res {
+            trace!("Found pte for {:?} in {:?} with tags {:?}", vpn, pte.ppn(), pte.flags());
+        }
         res
-
     }
     pub fn get_atp_token(&self) -> usize {
         8usize << 60 |      //  mode SV39
