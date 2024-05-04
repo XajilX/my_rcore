@@ -47,3 +47,11 @@ pub fn sys_read(fd: usize, buf: *const u8, len: usize) -> isize {
         }
     }
 }
+
+pub fn sys_open(path: *const u8, flags: u32) -> isize {
+    todo!()
+}
+
+pub fn sys_close(fd: usize) -> isize {
+    todo!()
+}

@@ -30,6 +30,7 @@ fn main() -> i32 {
     panic!("Cannot find main function");
 }
 
+use bitflags::bitflags;
 /// ------------------------------------------------------------
 /// ------------------------------------------------------------
 /// Heap allocation
@@ -95,7 +96,7 @@ pub fn exec(path: &str) -> isize {
         |_| CString::from_vec_with_nul(Vec::from(path)),
         |x| Ok(x)
     ).unwrap();
-    sys_exec(path_.as_c_str())
+    sys_exec(&path_)
 }
 
 pub fn wait(exit_code: &mut i32) -> isize {
@@ -122,3 +123,25 @@ pub fn sleep(ms: usize) {
         sys_yield();
     }
 } 
+
+bitflags! {
+    pub struct OpenFlags: u32 {
+        const RDONLY = 0;
+        const WRONLY = 1 << 0;
+        const RDWR = 1 << 1;
+        const CREATE = 1 << 9;
+        const TRUNC = 1 << 10;
+    }
+}
+
+pub fn open(path: &str, flags: OpenFlags) -> isize {
+    let path_ = CString::new(path).map_or_else(
+        |_| CString::from_vec_with_nul(Vec::from(path)),
+        |x| Ok(x)
+    ).unwrap();
+    sys_open(&path_, flags.bits())
+}
+
+pub fn close(fd: usize) -> isize {
+    sys_close(fd)
+}
