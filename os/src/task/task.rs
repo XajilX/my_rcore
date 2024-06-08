@@ -1,15 +1,14 @@
 use core::cell::RefMut;
+use alloc::vec;
 
-use alloc::{sync::{Weak, Arc}, vec::Vec};
+use alloc::{sync::{Arc, Weak}, vec::Vec};
 use log::debug;
 
+use crate::fs::stdio::*;
 use crate::{
-    mm::{
-        memset::{MemSet, KERN_SPACE},
-        address::{PhysPageNum, VirtAddr},
-    },
-    config::ADDR_TRAPCONTEXT,
-    trap::{context::TrapContext, trap_handler}, uthr::UThrCell,
+    config::ADDR_TRAPCONTEXT, fs::File, mm::{
+        address::{PhysPageNum, VirtAddr}, memset::{MemSet, KERN_SPACE}
+    }, trap::{context::TrapContext, trap_handler}, uthr::UThrCell
 };
 
 use super::{context::TaskContext, kern_stack::KernStack, pid::{PidHandle, pid_alloc}};
@@ -56,6 +55,11 @@ impl ProcControlBlock {
                     memset,
                     parent: None,
                     children: Vec::new(),
+                    fd_table: vec![
+                        Some(Arc::new(Stdin)),
+                        Some(Arc::new(Stdout)),
+                        Some(Arc::new(Stdout)),
+                    ],
                     exit_code: 0
                 })
             }
@@ -77,6 +81,12 @@ impl ProcControlBlock {
         let pid = pid_alloc();
         let kern_stack = KernStack::new(&pid);
         let kern_sp = kern_stack.get_top();
+        //  copy fd table
+        let new_fd_tab: Vec<Option<Arc<dyn File + Send + Sync>>> = par_mut.fd_table.iter()
+            .map(|ofd| match ofd {
+                    Some(file) => Some(file.clone()),
+                    None => None
+            }).collect();
         let pcb = Arc::new(Self {
             pid,
             kern_stack,
@@ -89,6 +99,7 @@ impl ProcControlBlock {
                     memset,
                     parent: Some(Arc::downgrade(self)),
                     children: Vec::new(),
+                    fd_table: new_fd_tab,
                     exit_code: 0
                 })
             }
@@ -124,6 +135,7 @@ pub struct PCBMut {
     pub memset: MemSet,
     pub parent: Option<Weak<ProcControlBlock>>,
     pub children: Vec<Arc<ProcControlBlock>>,
+    pub fd_table: Vec<Option<Arc<dyn File + Sync + Send>>>,
     pub exit_code: i32
 }
 impl PCBMut {
@@ -135,5 +147,15 @@ impl PCBMut {
     }
     pub fn is_zombie(&self) -> bool {
         self.task_status == TaskStatus::Zombie
+    }
+    pub fn alloc_newfd(&mut self) -> usize {
+        if let Some(fd) = (0..self.fd_table.len()).find(|fd| {
+            self.fd_table[*fd].is_none()
+        }) {
+            fd
+        } else {
+            self.fd_table.push(None);
+            self.fd_table.len() - 1
+        }
     }
 }

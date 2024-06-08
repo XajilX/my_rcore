@@ -1,7 +1,7 @@
 use alloc::sync::Arc;
 use lazy_static::lazy_static;
 
-use crate::loader::get_app_data_by_name;
+use crate::fs::inode::{OSInode, OpenFlag};
 
 use self::{task::{ProcControlBlock, TaskStatus}, manager::add_proc, processor::{take_curr_proc, schedule}, context::TaskContext};
 
@@ -15,7 +15,9 @@ pub mod manager;
 
 lazy_static! {
     pub static ref INITPROC: Arc<ProcControlBlock> = {
-        Arc::new(ProcControlBlock::new(get_app_data_by_name("initproc").unwrap()))
+        let inode = OSInode::open("initproc", OpenFlag::RDONLY).unwrap();
+        let v = inode.read_app();
+        Arc::new(ProcControlBlock::new(v.as_slice()))
     };
 }
 

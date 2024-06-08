@@ -10,7 +10,6 @@ mod lang_items;
 mod stack_trace;
 mod sbi;
 mod logging;
-mod loader;
 mod task;
 mod uthr;
 mod trap;
@@ -18,6 +17,8 @@ mod syscall;
 mod config;
 mod timer;
 mod mm;
+mod drivers;
+mod fs;
 
 use core::arch::global_asm;
 global_asm!(include_str!("entry.asm"));
@@ -32,6 +33,7 @@ pub fn rust_main() -> ! {
     mm::init();
     println!("[kernel] memory space initialized successfully");
     mm::remap_test();
+    fs::list_apps();
     task::add_initproc();
     println!("[kernel] initproc added");
     trap::init();
@@ -39,7 +41,6 @@ pub fn rust_main() -> ! {
     trap::enable_timer_int();
     timer::set_trig();
     println!("[kernel] timer interrupt enabled");
-    loader::list_apps();
     task::processor::run_proc();
     unreachable!()
 }

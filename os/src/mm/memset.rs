@@ -6,7 +6,7 @@ use lazy_static::lazy_static;
 use log::{debug, info};
 use riscv::register::satp;
 
-use crate::{config::{ADDR_TRAMPOLINE, MEM_END, PAGE_SIZE, USER_STACK_SIZE, ADDR_TRAPCONTEXT}, uthr::UThrCell};
+use crate::{config::{ADDR_TRAMPOLINE, ADDR_TRAPCONTEXT, MEM_END, MMIO, PAGE_SIZE, USER_STACK_SIZE}, uthr::UThrCell};
 use super::{address::{VirtAddr, PhysAddr, VirtPageNum}, pagetab::{PageTab, PTEFlags, PageTabEntry}, memarea::*};
 
 extern "C" {
@@ -106,6 +106,17 @@ impl MemSet {
             MapType::Identical,
             MapPermission::R | MapPermission::W
         ), None);
+        info!("mapping memory-mapped regs");
+        for pair in MMIO {
+            let va_start: VirtAddr = (*pair).0.into();
+            let va_end: VirtAddr = ((*pair).0 + (*pair).1).into();
+            memset.push(MapArea::new(
+                va_start..va_end, 
+                MapType::Identical,
+                MapPermission::R | MapPermission::W
+                ), None
+            );
+        }
         memset
     }
     //  Memset, user_sp, entry point

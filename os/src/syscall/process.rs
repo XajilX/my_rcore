@@ -1,7 +1,7 @@
 use alloc::sync::Arc;
 use log::debug;
 
-use crate::{timer::get_time_ms, task::{suspend_curr_task, processor::{curr_proc, curr_atp_token}, manager::add_proc, exit_curr_task}, mm::pagetab::PageTab, loader::get_app_data_by_name};
+use crate::{fs::inode::{OSInode, OpenFlag}, mm::pagetab::PageTab, task::{exit_curr_task, manager::add_proc, processor::{curr_atp_token, curr_proc}, suspend_curr_task}, timer::get_time_ms};
 
 pub fn sys_yield() -> isize {
     suspend_curr_task();
@@ -36,9 +36,10 @@ pub fn sys_exec(path: *const u8) -> isize {
     let token = curr_atp_token();
     let path = PageTab::from_token(token).trans_cstr(path);
     debug!("sys_exec {}", path);
-    if let Some(data) = get_app_data_by_name(path.as_str()) {
+    if let Some(inode) = OSInode::open(path.as_str(), OpenFlag::RDONLY) {
+        let data = inode.read_app();
         let proc = curr_proc().unwrap();
-        proc.exec(data);
+        proc.exec(data.as_slice());
         0
     } else {
         -1
