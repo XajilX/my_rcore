@@ -7,11 +7,10 @@ extern crate alloc;
 #[macro_use]
 mod console;
 mod lang_items;
-mod stack_trace;
 mod sbi;
 mod logging;
 mod task;
-mod uthr;
+mod sync;
 mod trap;
 mod syscall;
 mod config;
@@ -21,27 +20,36 @@ mod drivers;
 mod fs;
 
 use core::arch::global_asm;
+
+use drivers::SERIAL_DEV;
+use lazy_static::lazy_static;
+use sync::UThrCell;
 global_asm!(include_str!("entry.asm"));
 global_asm!(include_str!("link_app.S"));
+
+lazy_static! {
+    pub static ref DEV_NONBLOCKING_ACCESS: UThrCell<bool> = {
+        unsafe { UThrCell::new(false) }
+    };
+}
 
 #[no_mangle]
 pub fn rust_main() -> ! {
     clr_bss();
-    println!("[kernel] Hello, world!");
     logging::init();
-    println!("[kernel] start memory initialize");
     mm::init();
-    println!("[kernel] memory space initialized successfully");
-    mm::remap_test();
-    fs::list_apps();
-    task::add_initproc();
-    println!("[kernel] initproc added");
+    SERIAL_DEV.init();
+    println!("[kernel] UART init success");
+    drivers::device_init();
     trap::init();
     println!("[kernel] trap entry set");
     trap::enable_timer_int();
     timer::set_trig();
     println!("[kernel] timer interrupt enabled");
-    task::processor::run_proc();
+    fs::list_apps();
+    task::add_initproc();
+    *DEV_NONBLOCKING_ACCESS.get_refmut() = true;
+    task::processor::run_task();
     unreachable!()
 }
 

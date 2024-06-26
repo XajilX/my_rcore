@@ -3,10 +3,9 @@ use alloc::{vec::Vec, sync::Arc};
 
 use elf::{ElfBytes, endian::AnyEndian, abi::{PT_LOAD, PF_W, PF_R, PF_X}};
 use lazy_static::lazy_static;
-use log::{debug, info};
 use riscv::register::satp;
 
-use crate::{config::{ADDR_TRAMPOLINE, ADDR_TRAPCONTEXT, MEM_END, MMIO, PAGE_SIZE, USER_STACK_SIZE}, uthr::UThrCell};
+use crate::{config::{ADDR_TRAMPOLINE, MEM_END, MMIO, PAGE_SIZE}, sync::UThrCell};
 use super::{address::{VirtAddr, PhysAddr, VirtPageNum}, pagetab::{PageTab, PTEFlags, PageTabEntry}, memarea::*};
 
 extern "C" {
@@ -24,7 +23,6 @@ pub struct MemSet {
 }
 impl MemSet {
     pub fn new_empty() -> Self {
-        debug!("new empty memory set");
         Self {
             pagetab: PageTab::new(),
             areas: Vec::new()
@@ -57,56 +55,46 @@ impl MemSet {
     }
     pub fn new_kernel() -> Self {
         let mut memset = Self::new_empty();
-        debug!(".text [{:#x}, {:#x})", stext as usize, etext as usize);
-        debug!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
-        debug!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
-        debug!(
-            ".bss [{:#x}, {:#x})",
-            sbss_stack as usize, ebss as usize
-        );
-        debug!(
-            "phys mem [{:#x}, {:#x})",
-            ekernel as usize, MEM_END
-        );
-        info!("mapping trampoline");
+
         //  trampoline (Not collected by memarea)
         memset.map_trampoline();
+
         //  text
-        info!("mapping .text section");
         memset.push(MapArea::new(
             (stext as usize).into()..(etext as usize).into(),
             MapType::Identical,
             MapPermission::R | MapPermission::X
         ), None);
+
         //  rodata
-        info!("mapping .rodata section");
         memset.push(MapArea::new(
             (srodata as usize).into()..(erodata as usize).into(),
             MapType::Identical,
             MapPermission::R
         ), None);
+
         //  data
-        info!("mapping .data section");
         memset.push(MapArea::new(
             (sdata as usize).into()..(edata as usize).into(),
             MapType::Identical,
             MapPermission::R | MapPermission::W
         ), None);
+
         //  bss
-        info!("mapping .bss section");
         memset.push(MapArea::new(
             (sbss_stack as usize).into()..(ebss as usize).into(),
             MapType::Identical,
             MapPermission::R | MapPermission::W
         ), None);
-        info!("mapping physical memory");
+
         //  physical mem
         memset.push(MapArea::new(
             (ekernel as usize).into()..(MEM_END).into(),
             MapType::Identical,
             MapPermission::R | MapPermission::W
         ), None);
-        info!("mapping memory-mapped regs");
+
+        // MMIO
         for pair in MMIO {
             let va_start: VirtAddr = (*pair).0.into();
             let va_end: VirtAddr = ((*pair).0 + (*pair).1).into();
@@ -121,14 +109,11 @@ impl MemSet {
     }
     //  Memset, user_sp, entry point
     pub fn from_elf(elf_data: &[u8]) -> (Self, usize, usize) {
-        debug!("parsing elf data");
         let mut memset = Self::new_empty();
-        debug!("add trampoline");
         //  trampoline
         memset.map_trampoline();
 
         //  elf sections
-        debug!("now parsing elf file");
         let mut elf_end_vpn = VirtPageNum(0);
         let elf = ElfBytes::<AnyEndian>::minimal_parse(elf_data)
             .expect("[kernel] parsing error encountered for elf.");
@@ -140,7 +125,6 @@ impl MemSet {
         {
             let va_start:VirtAddr = (phdr.p_vaddr as usize).into();
             let va_end:VirtAddr = ((phdr.p_vaddr + phdr.p_memsz) as usize).into();
-            debug!("parsing segment [{:#x}, {:#x})", va_start.0, va_end.0);
             let map_perm = MapPermission::from_bits_truncate(
                 (1u8 << 4) |    //  MapPermission::U
                 (((phdr.p_flags & PF_R) >> 1) |
@@ -158,30 +142,15 @@ impl MemSet {
             );
         }
 
-        //  user stack
-        let user_stack_bottom: VirtAddr = (VirtAddr::from(elf_end_vpn).0 + PAGE_SIZE).into();
-        let user_stack_top = VirtAddr(user_stack_bottom.0 + USER_STACK_SIZE);
-        memset.push(MapArea::new(
-            user_stack_bottom..user_stack_top,
-            MapType::Framed,
-            MapPermission::U | MapPermission::R | MapPermission::W
-        ), None);
-        
-        //  TrapContext
-        memset.push(MapArea::new(
-            ADDR_TRAPCONTEXT.into()..ADDR_TRAMPOLINE.into(),
-            MapType::Framed,
-            MapPermission::R | MapPermission::W
-        ), None);
+        let user_stack_bottom = VirtAddr::from(elf_end_vpn).0 + PAGE_SIZE;
         (
             memset,
-            user_stack_top.into(),      //  user_sp
+            user_stack_bottom,          //  user_stack_bottom
             elf.ehdr.e_entry as usize   //  entry_point
         )
     }
     pub fn activate(&self) {
         let satp = self.pagetab.get_atp_token();
-        debug!("atp_token: {satp:#x}");
         unsafe {
             satp::write(satp);
             asm!("sfence.vma");
@@ -237,57 +206,4 @@ lazy_static! {
 
 pub fn kern_mem_init() {
     KERN_SPACE.get_refmut().activate();
-}
-
-#[allow(unused)]
-pub fn remap_test() {
-    let mut kern_space = KERN_SPACE.get_refmut();
-    let mid_text: VirtAddr = ((stext as usize + etext as usize) / 2).into();
-    let mid_rodata: VirtAddr = ((srodata as usize + erodata as usize) / 2).into();
-    let mid_data: VirtAddr = ((sdata as usize + edata as usize) / 2).into();
-    let mid_phys: VirtAddr = ((ekernel as usize + MEM_END) / 2).into();
-    debug!("mid_text: ");
-    debug!("  VA: {:#x}", mid_text.0);
-    debug!("  PPN: {:#x}", kern_space
-        .pagetab
-        .find(mid_text.vpn_floor())
-        .unwrap().ppn().0);
-    debug!("mid_rodata: ");
-    debug!("  VA: {:#x}", mid_rodata.0);
-    debug!("  PPN: {:#x}", kern_space
-        .pagetab
-        .find(mid_rodata.vpn_floor())
-        .unwrap().ppn().0);
-    debug!("mid_data: ");
-    debug!("  VA: {:#x}", mid_data.0);
-    debug!("  PPN: {:#x}", kern_space
-        .pagetab
-        .find(mid_data.vpn_floor())
-        .unwrap().ppn().0);
-    
-    assert!(!kern_space
-        .pagetab
-        .find(mid_text.vpn_floor())
-        .unwrap()
-        .writable()
-    );
-    assert!(!kern_space
-        .pagetab
-        .find(mid_rodata.vpn_floor())
-        .unwrap()
-        .writable()
-    );
-    assert!(!kern_space
-        .pagetab
-        .find(mid_data.vpn_floor())
-        .unwrap()
-        .executable()
-    );
-    assert!(kern_space
-        .pagetab
-        .find(mid_phys.vpn_floor())
-        .unwrap()
-        .writable()
-    );
-    println!("[kernel] remap test passed!")
 }

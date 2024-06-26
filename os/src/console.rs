@@ -1,12 +1,12 @@
-use crate::sbi::cputchar;
 use core::fmt::{self, Write};
 
+use crate::drivers::SERIAL_DEV;
 struct Stdout;
 
 impl Write for Stdout {
     fn write_str(&mut self, s:&str) -> fmt::Result {
         for c in s.chars() {
-            cputchar(c as usize);
+            SERIAL_DEV.write(c as u8);
         }
         Ok(())
     }

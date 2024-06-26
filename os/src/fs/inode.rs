@@ -1,7 +1,7 @@
 use alloc::{sync::Arc, vec::Vec};
 use bitflags::bitflags;
 use lazy_static::lazy_static;
-use crate::{drivers::BLOCK_DEV, uthr::UThrCell};
+use crate::{drivers::BLOCK_DEV, sync::UThrCell};
 use easyfs::{vfs::VirtInode, EzFileSys};
 
 use super::File;

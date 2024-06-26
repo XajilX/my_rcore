@@ -1,13 +1,9 @@
 #[inline(always)]
 
-pub fn cputchar(c: usize) {
+#[allow(unused)]
+pub fn cputchar(ch: char) {
     #[allow(deprecated)]
-    sbi_rt::legacy::console_putchar(c);
-}
-
-pub fn cgetchar() -> usize {
-    #[allow(deprecated)]
-    sbi_rt::legacy::console_getchar()
+    sbi_rt::legacy::console_putchar(ch as usize);
 }
 
 pub fn shutdown() -> ! {

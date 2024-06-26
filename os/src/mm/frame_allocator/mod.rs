@@ -1,11 +1,9 @@
 mod stack_frame_alloc;
 use core::{ops::Deref, fmt::{Debug, Formatter, self}};
 
-use alloc::vec::Vec;
 use lazy_static::lazy_static;
-use log::debug;
 
-use crate::{uthr::UThrCell, config::MEM_END, mm::address::PhysAddr};
+use crate::{sync::UThrCell, config::MEM_END, mm::address::PhysAddr};
 
 use super::address::PhysPageNum;
 use self::stack_frame_alloc::StackFrameAlloc;
@@ -69,23 +67,4 @@ pub fn frame_alloc() -> Option<FrameTracker> {
 }
 pub fn frame_dealloc(ppn: PhysPageNum) {
     FRAME_ALLOC.get_refmut().dealloc(ppn);
-}
-
-#[allow(unused)]
-/// a simple test for frame allocator
-pub fn frame_alloc_test() {
-    let mut v: Vec<FrameTracker> = Vec::new();
-    for i in 0..5 {
-        let frame = frame_alloc().unwrap();
-        debug!("{:?}", frame);
-        v.push(frame);
-    }
-    v.clear();
-    for i in 0..5 {
-        let frame = frame_alloc().unwrap();
-        debug!("{:?}", frame);
-        v.push(frame);
-    }
-    drop(v);
-    println!("frame_allocator_test passed!");
 }

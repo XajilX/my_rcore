@@ -10,25 +10,71 @@ const CR: u8 = 0x0du8;
 const DL: u8 = 0x7fu8;
 const BS: u8 = 0x08u8;
 
-use alloc::string::String;
-use user::{console::getchar, fork, exec, waitpid};
+use alloc::{ffi::CString, string::String, vec::Vec};
+use user::{close, console::getchar, dup, exec, fork, open, waitpid, OpenFlags};
 
 #[no_mangle]
 fn main() -> i32 {
     println!("[ushell] start");
     let mut line = String::new();
-    print!("# ");
+    print!("> ");
     loop {
         match getchar() {
             LF | CR => {
                 println!("");
                 if line.is_empty() {
-                    print!("# ");
+                    print!("> ");
                     continue;
                 }
+                let mut args: Vec<_> = line.split(' ').map(|str| {
+                    CString::new(str).unwrap()
+                }).collect();
+
+                // IO redirect
+                let mut input: Option<CString> = None;
+                if let Some((idx, _)) = args.iter().enumerate()
+                    .find(|(_, cstr)| cstr.to_str() == Ok("<")) {
+                        input = Some(args[idx + 1].clone());
+                        args.drain(idx..=idx+1);
+                }
+                let mut output: Option<CString> = None;
+                if let Some((idx, _)) = args.iter().enumerate()
+                    .find(|(_, cstr)| cstr.to_str() == Ok(">")) {
+                        output = Some(args[idx + 1].clone());
+                        args.drain(idx..=idx+1);
+                }
+
+                let mut args_addr: Vec<_> = args.iter().map(|cstr| {
+                    cstr.as_ptr() as *const u8
+                }).collect();
+                args_addr.push(0 as *const u8);
                 match fork() {
                     0 => {
-                        if exec(line.as_str()) == -1 {
+
+                        if let Some(path) = input {
+                            let input_fd = open(path.to_str().unwrap(), OpenFlags::RDONLY);
+                            if input_fd == -1 {
+                                println!("Error when opening file {}! ", path.to_str().unwrap());
+                                return -4;
+                            }
+                            let input_fd = input_fd as usize;
+                            close(0);
+                            assert_eq!(dup(input_fd), 0);
+                            close(input_fd);
+                        }
+                        if let Some(path) = output {
+                            let output_fd = open(path.to_str().unwrap(), OpenFlags::CREATE | OpenFlags::WRONLY);
+                            if output_fd == -1 {
+                                println!("Error when opening file {}! ", path.to_str().unwrap());
+                                return -4;
+                            }
+                            let output_fd = output_fd as usize;
+                            close(1);
+                            assert_eq!(dup(output_fd), 1);
+                            close(output_fd);
+                        }
+                        
+                        if exec(args[0].to_str().unwrap(), &args_addr) == -1 {
                             println!("Error when executing");
                             return -4;
                         }
@@ -45,7 +91,7 @@ fn main() -> i32 {
                     }
                 }
                 line.clear();
-                print!("# ");
+                print!("> ");
             }
             BS | DL => {
                 if !line.is_empty() {
@@ -56,8 +102,10 @@ fn main() -> i32 {
                 }
             }
             c => {
-                print!("{}", c as char);
-                line.push(c as char);
+                if !c.is_ascii_control() {
+                    print!("{}", c as char);
+                    line.push(c as char);
+                }
             }
         }
     }

@@ -1,21 +1,27 @@
 use core::{ops::Range, mem::size_of};
 
-use crate::{mm::{memset::KERN_SPACE, memarea::MapPermission, address::VirtAddr}, config::*};
+use crate::{config::*, mm::{address::VirtAddr, memarea::MapPermission, memset::KERN_SPACE}, sync::UThrCell, task::allocator::IdAlloc};
 
-use super::pid::PidHandle;
+use lazy_static::lazy_static;
 
-pub struct KernStack {
-    pid: usize
+pub struct KernStack(pub usize);
+
+lazy_static! {
+    static ref KSTACK_ALLOC: UThrCell<IdAlloc> = unsafe {
+        UThrCell::new(IdAlloc::new())
+    };
 }
+pub fn kstack_alloc() -> KernStack {
+    let id = KSTACK_ALLOC.get_refmut().alloc();
+    let kstack_range = kern_stack_range(id);
+    KERN_SPACE.get_refmut().insert_framed_area(
+        kstack_range.start.into()..kstack_range.end.into(),
+        MapPermission::R | MapPermission::W
+    );
+    KernStack(id)
+}
+
 impl KernStack {
-    pub fn new(pid_handle: &PidHandle) -> Self {
-        let ks_range = kern_stack_range(pid_handle.0);
-        KERN_SPACE.get_refmut().insert_framed_area(
-            ks_range.start.into()..ks_range.end.into(),
-            MapPermission::R | MapPermission::W
-        );
-        KernStack { pid: pid_handle.0 }
-    }
     #[allow(unused)]
     pub fn push_on_top<T>(&self, value: T) -> *mut T where
         T: Sized
@@ -26,20 +32,21 @@ impl KernStack {
         ptr_mut
     }
     pub fn get_top(&self) -> usize {
-        let ks_range = kern_stack_range(self.pid);
+        let ks_range = kern_stack_range(self.0);
         ks_range.end
     }
 }
 impl Drop for KernStack {
     fn drop(&mut self) {
-        let ks_range = kern_stack_range(self.pid);
+        let ks_range = kern_stack_range(self.0);
         let ks_bottom_va: VirtAddr = ks_range.start.into();
         KERN_SPACE.get_refmut().del_area_by_start_vpn(ks_bottom_va.into());
+        KSTACK_ALLOC.get_refmut().dealloc(self.0);
     }
 }
 
-pub fn kern_stack_range(pid: usize) -> Range<usize> {
-    let top = ADDR_TRAMPOLINE - pid * (KERN_STACK_SIZE + PAGE_SIZE);
+fn kern_stack_range(id: usize) -> Range<usize> {
+    let top = ADDR_TRAMPOLINE - id * (KERN_STACK_SIZE + PAGE_SIZE);
     let bottom = top - KERN_STACK_SIZE;
     bottom..top
 }

@@ -1,4 +1,5 @@
 {
+    "rust-analyzer.server.path": "~/.rustup/toolchains/nightly-2024-04-26-x86_64-unknown-linux-gnu/bin/rust-analyzer",
     "rust-analyzer.cargo.target": "riscv64gc-unknown-none-elf",
     "rust-analyzer.check.allTargets": false,
     "rust-analyzer.showUnlinkedFileNotification": false

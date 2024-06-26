@@ -9,10 +9,10 @@ use user::{fork, exec, wait, yield_};
 #[no_mangle]
 fn main() -> i32 {
     if fork() == 0 {
-        exec("ushell");
+        exec("ushell", &["ushell\0".as_ptr(), 0 as *const u8]);
         unreachable!()
     }
-    println!("[ init ]");
+    println!("[ init ] start");
     loop {
         let mut exit_code = 0;
         match wait(&mut exit_code) {

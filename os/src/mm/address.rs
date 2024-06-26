@@ -89,6 +89,9 @@ impl PhysAddr {
     pub fn page_offset(&self) -> usize { self.0 & PAGE_OFFSET_MASK }
     pub fn ppn_floor(&self) -> PhysPageNum { (self.0 >> PAGE_SIZE_BITS).into() }
     pub fn ppn_ceil(&self) -> PhysPageNum { ((self.0 + PAGE_OFFSET_MASK) >> PAGE_SIZE_BITS).into() }
+    pub fn get_ref<T>(&self) -> &'static T {
+        unsafe { (self.0 as *mut T).as_ref().unwrap() }
+    }
     pub fn get_mut<T>(&self) -> &'static mut T {
         unsafe { (self.0 as *mut T).as_mut().unwrap() }
     }
@@ -116,6 +119,10 @@ impl PhysPageNum {
                 PAGE_SIZE
             )
         }
+    }
+    pub fn get_ref<T>(&self) -> &'static T {
+        let pa: PhysAddr = (*self).into();
+        pa.get_ref()
     }
     pub fn get_mut<T>(&self) -> &'static mut T {
         let pa: PhysAddr = (*self).into();

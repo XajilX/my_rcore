@@ -12,6 +12,11 @@ pub const ADDR_TRAPCONTEXT: usize = ADDR_TRAMPOLINE - PAGE_SIZE;
 
 pub const CLOCK_FREQ: usize = 12500000;
 
+pub const VIRT_PLIC: usize = 0x0c00_0000;
+pub const VIRT_UART: usize = 0x1000_0000;
+
 pub const MMIO: &[(usize, usize)] = &[
-    (0x10001000, 0x1000)
+    (0x2000000, 0x10000),
+    (0x0c00_0000, 0x600000),    // PLIC
+    (0x1000_0000, 0x9000),      // VIRTIO MMIO 
 ];

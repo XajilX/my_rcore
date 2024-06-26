@@ -77,6 +77,11 @@ QEMU_ARGS := -machine virt \
 run-inner: build
 	@qemu-system-riscv64 $(QEMU_ARGS)
 
+dtb:
+	@qemu-system-riscv64 $(QEMU_ARGS) -machine dumpdtb=riscv64-virt.dtb
+	@dtc -I dtb -O dts -o riscv64-virt.dts riscv64-virt.dtb
+	@rm -f riscv64-virt.dtb
+
 debug: build
 	@tmux new-session -d \
 		"qemu-system-riscv64 $(QEMU_ARGS) -s -S" && \

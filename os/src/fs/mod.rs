@@ -1,5 +1,7 @@
 pub mod inode;
 pub mod stdio;
+pub mod pipe;
+pub mod eventfd;
 use crate::{fs::inode::ROOT_INODE, mm::pagetab::UserBuffer};
 
 pub trait File: Send + Sync {

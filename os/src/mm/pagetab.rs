@@ -1,7 +1,6 @@
 use alloc::{vec, string::String};
 use alloc::vec::Vec;
 use bitflags::*;
-use log::{debug, trace};
 
 use crate::config::{PAGE_SIZE, PAGE_SIZE_BITS};
 
@@ -58,7 +57,6 @@ pub struct PageTab {
 impl PageTab {
     pub fn new() -> Self {
         let frame = frame_alloc().unwrap();
-        debug!("new pagetab at root {:#x}", frame.0);
         Self {
             root_ppn: frame.ppn,
             frames: vec![frame]
@@ -67,13 +65,11 @@ impl PageTab {
     pub fn ins(&mut self, vpn: VirtPageNum, ppn: PhysPageNum, flags: PTEFlags) {
         let pte = self.find_pte_create(vpn).unwrap();
         assert!(!pte.is_valid(), "vpn {:?} already exists in page table, ppn = {:?}, flag = {:?}. ", vpn, pte.ppn(), pte.flags());
-        trace!("map {:?} to {:?}", vpn, ppn);
         *pte = PageTabEntry::new(ppn, PTEFlags::V | flags);
     }
     pub fn del(&mut self, vpn: VirtPageNum) {
         let pte = self.find_pte(vpn).unwrap();
         assert!(pte.is_valid(), "vpn {:?} already invalid", vpn);
-        trace!("unmap {:?} to {:?}", vpn, pte.ppn());
         *pte = PageTabEntry::zeros();
     }
     pub fn from_token(satp: usize) -> Self {
@@ -94,7 +90,6 @@ impl PageTab {
         let mut string = String::new();
         let mut va = VirtAddr::from(ptr as usize);
         loop {
-            trace!("translate c_str in {:?}", va);
             let ch: u8 = *(self.trans_va(va).unwrap().get_mut());
             if ch == 0 {
                 break;
@@ -105,6 +100,15 @@ impl PageTab {
         }
         string
     }
+
+    #[allow(unused)]
+    pub fn trans_ref<T>(&self, ptr: *const T) -> &'static T {
+        self.trans_va((ptr as usize).into()).unwrap().get_ref()
+    }
+    pub fn trans_mut<T>(&self, ptr: *mut T) -> &'static mut T {
+        self.trans_va((ptr as usize).into()).unwrap().get_mut()
+    }
+
     pub fn trans_bytes_buffer(&self, ptr: *const u8, len: usize) -> Vec<&'static mut [u8]> {
         let mut va_start = VirtAddr::from(ptr as usize);
         let va_end = VirtAddr(va_start.0 + len);
@@ -160,9 +164,6 @@ impl PageTab {
             }
             ppn = pte.ppn();
             res = Some(pte);
-        }
-        if let Some(pte) = &res {
-            trace!("Found pte for {:?} in {:?} with tags {:?}", vpn, pte.ppn(), pte.flags());
         }
         res
     }

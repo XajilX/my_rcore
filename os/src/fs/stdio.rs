@@ -1,6 +1,6 @@
 use core::str::from_utf8;
 
-use crate::{sbi::cgetchar, task::suspend_curr_task};
+use crate::drivers::SERIAL_DEV;
 
 use super::File;
 
@@ -15,16 +15,7 @@ impl File for Stdin {
     
     fn read(&self, mut buf: crate::mm::pagetab::UserBuffer) -> usize {
         assert_eq!(buf.len(), 1);
-        let mut c: usize;
-        loop {
-            c = cgetchar();
-            if c == 0 {
-                suspend_curr_task();
-            } else {
-                break;
-            }
-        }
-        let ch = c as u8;
+        let ch = SERIAL_DEV.read();
         unsafe {
             buf.buffers[0].as_mut_ptr().write_volatile(ch);
         }
