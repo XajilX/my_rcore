@@ -1,5 +1,5 @@
 use clap::{App, Arg};
-use easyfs::{BlockDevice, EzFileSys};
+use easyfs::{BlockDev, EzFileSys};
 use std::fs::{read_dir, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::sync::Arc;
@@ -9,7 +9,7 @@ const BLOCK_SZ: usize = 512;
 
 struct BlockFile(Mutex<File>);
 
-impl BlockDevice for BlockFile {
+impl BlockDev for BlockFile {
     fn read_block(&self, block_id: usize, buf: &mut [u8]) {
         let mut file = self.0.lock().unwrap();
         file.seek(SeekFrom::Start((block_id * BLOCK_SZ) as u64))
@@ -22,9 +22,6 @@ impl BlockDevice for BlockFile {
         file.seek(SeekFrom::Start((block_id * BLOCK_SZ) as u64))
             .expect("Error when seeking!");
         assert_eq!(file.write(buf).unwrap(), BLOCK_SZ, "Not a complete block!");
-    }
-    fn handle_irq(&self) {
-        todo!()
     }
 }
 

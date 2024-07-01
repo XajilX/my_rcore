@@ -2,13 +2,13 @@
 use alloc::{string::String, sync::Arc, vec::Vec};
 use spin::{Mutex, MutexGuard};
 
-use crate::{cache_man::{get_block_cache, sync_block_cache}, efs::EzFileSys, layout::{DirEntry, DiskInode, DiskInodeType, DIRENT_SIZE}, BlockDevice};
+use crate::{cache_man::{get_block_cache, sync_block_cache}, efs::EzFileSys, layout::{DirEntry, DiskInode, DiskInodeType, DIRENT_SIZE}, BlockDev};
 
 pub struct VirtInode {
     block_id: usize,
     block_offset: usize,
     fs: Arc<Mutex<EzFileSys>>,
-    block_dev: Arc<dyn BlockDevice>
+    block_dev: Arc<dyn BlockDev>
 }
 
 impl VirtInode {
@@ -16,7 +16,7 @@ impl VirtInode {
         block_id: u32,
         block_offset: usize,
         fs: Arc<Mutex<EzFileSys>>,
-        block_dev: Arc<dyn BlockDevice>
+        block_dev: Arc<dyn BlockDev>
     ) -> Self {
         Self {
             block_id: block_id as usize,

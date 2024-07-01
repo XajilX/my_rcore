@@ -1,10 +1,5 @@
 #[inline(always)]
 
-#[allow(unused)]
-pub fn cputchar(ch: char) {
-    #[allow(deprecated)]
-    sbi_rt::legacy::console_putchar(ch as usize);
-}
 
 pub fn shutdown() -> ! {
     use sbi_rt::{system_reset, NoReason, Shutdown};

@@ -18,6 +18,7 @@ const SYSCALL_DUP: usize = 24;
 const SYSCALL_OPEN: usize = 56;
 const SYSCALL_CLOSE: usize = 57;
 const SYSCALL_PIPE: usize = 59;
+const SYSCALL_SEEK: usize = 62;
 const SYSCALL_READ: usize = 63;
 const SYSCALL_WRITE: usize = 64;
 const SYSCALL_EXIT: usize = 93;
@@ -46,7 +47,13 @@ const SYSCALL_SEMAMINUS: usize = 1022;
 const SYSCALL_CONDVCREATE: usize = 1030;
 const SYSCALL_CONDVSIGNAL: usize = 1031;
 const SYSCALL_CONDVWAIT: usize = 1032;
+const SYSCALL_GETGPURES: usize = 2000;
+const SYSCALL_GETFBFD: usize = 2001;
+const SYSCALL_INPUTEVENT: usize = 3000;
 
+pub fn sys_seek(fd: usize, offset: isize, whence: usize) -> isize {
+    syscall(SYSCALL_SEEK, [fd, offset as usize, whence])
+}
 
 pub fn sys_read(fd: usize, buffer: &[u8]) -> isize {
     syscall(SYSCALL_READ, [fd, buffer.as_ptr() as usize, buffer.len()])
@@ -172,4 +179,16 @@ pub fn sys_condvar_signal(id: usize) -> isize {
 
 pub fn sys_condvar_wait(id: usize, mutex_id: usize) -> isize {
     syscall(SYSCALL_CONDVWAIT, [id, mutex_id, 0])
+}
+
+pub fn sys_get_gpures() -> isize {
+    syscall(SYSCALL_GETGPURES, [0, 0, 0])
+}
+
+pub fn sys_get_fbfd() -> isize {
+    syscall(SYSCALL_GETFBFD, [0, 0, 0])
+}
+
+pub fn sys_input_event() -> isize {
+    syscall(SYSCALL_INPUTEVENT, [0, 0, 0])
 }

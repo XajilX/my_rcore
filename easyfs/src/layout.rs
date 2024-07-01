@@ -2,7 +2,7 @@ use core::{cmp::min, ffi::CStr};
 
 use alloc::{sync::Arc, vec::Vec};
 
-use crate::{BLOCK_SIZE, BlockDevice, cache_man::get_block_cache};
+use crate::{BLOCK_SIZE, BlockDev, cache_man::get_block_cache};
 
 const EZFS_MAGIC: u32 = 0x53465A45;     //  b"EZFS"
 const INODE_DIRECT_COUNT: usize = 28;
@@ -67,7 +67,7 @@ impl DiskInode {
     }
     pub fn is_dir(&self) -> bool { self.ty_inode == DiskInodeType::Dir }
     pub fn is_file(&self) -> bool { self.ty_inode == DiskInodeType::File }
-    pub fn get_block_id(&self, inner_id: u32, block_dev: &Arc<dyn BlockDevice>) -> u32 {
+    pub fn get_block_id(&self, inner_id: u32, block_dev: &Arc<dyn BlockDev>) -> u32 {
         let inner_id = inner_id as usize;
         if inner_id < INODE_DIRECT_COUNT {
             self.direct[inner_id]
@@ -114,7 +114,7 @@ impl DiskInode {
 
 
 
-    pub fn increase_size(&mut self, new_size: u32, new_blocks: Vec<u32>, block_dev: &Arc<dyn BlockDevice>) {
+    pub fn increase_size(&mut self, new_size: u32, new_blocks: Vec<u32>, block_dev: &Arc<dyn BlockDev>) {
         let mut curr_blks = self.data_blocks();
         let mut goal_blks = Self::_data_blocks(new_size);
         let mut iter_blks = new_blocks.into_iter();
@@ -181,7 +181,7 @@ impl DiskInode {
 
 
 
-    pub fn clear_size(&mut self, block_dev: &Arc<dyn BlockDevice>) -> Vec<u32> {
+    pub fn clear_size(&mut self, block_dev: &Arc<dyn BlockDev>) -> Vec<u32> {
         let mut v: Vec<u32> = Vec::new();
         let mut tot_blks = self.data_blocks() as usize;
         let mut curr_blks = 0usize;
@@ -247,7 +247,7 @@ impl DiskInode {
         v
     }
 
-    pub fn read_at(&self, offset: usize, buf: &mut [u8], block_dev: &Arc<dyn BlockDevice>) -> usize {
+    pub fn read_at(&self, offset: usize, buf: &mut [u8], block_dev: &Arc<dyn BlockDev>) -> usize {
         let mut start = offset;
         let end = min(offset + buf.len(), self.size as usize);
         if start >= end {
@@ -278,7 +278,7 @@ impl DiskInode {
         read_size
     }
 
-    pub fn write_at(&mut self, offset: usize, buf: &[u8], block_dev: &Arc<dyn BlockDevice>) -> usize {
+    pub fn write_at(&mut self, offset: usize, buf: &[u8], block_dev: &Arc<dyn BlockDev>) -> usize {
         let mut start = offset;
         let end = min(offset + buf.len(), self.size as usize);
         assert!(start <= end);

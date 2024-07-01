@@ -2,7 +2,7 @@ use alloc::{collections::VecDeque, sync::Arc};
 use lazy_static::lazy_static;
 use spin::Mutex;
 
-use crate::{block_cache::BlockCache, BlockDevice};
+use crate::{block_cache::BlockCache, BlockDev};
 
 const MAX_CACHE_NUM: usize = 16;
 
@@ -13,7 +13,7 @@ impl BlockCacheMan {
     pub fn new() -> Self {
         Self { queue: VecDeque::new() }
     }
-    pub fn get_block_cache(&mut self, block_id: usize, block_dev: Arc<dyn BlockDevice>) -> Arc<Mutex<BlockCache>> {
+    pub fn get_block_cache(&mut self, block_id: usize, block_dev: Arc<dyn BlockDev>) -> Arc<Mutex<BlockCache>> {
         if let Some((_, bc)) = self.queue
             .iter()
             .find(|(id, _)| *id == block_id)
@@ -45,7 +45,7 @@ lazy_static! {
     );
 }
 
-pub fn get_block_cache(block_id: usize, block_dev: Arc<dyn BlockDevice>) -> Arc<Mutex<BlockCache>> {
+pub fn get_block_cache(block_id: usize, block_dev: Arc<dyn BlockDev>) -> Arc<Mutex<BlockCache>> {
     BLOCK_CACHE_MAN.lock().get_block_cache(block_id, block_dev)
 }
 

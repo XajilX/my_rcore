@@ -3,10 +3,10 @@ use core::mem::size_of;
 use alloc::sync::Arc;
 use spin::Mutex;
 
-use crate::{BlockDevice, bitmap::{Bitmap, BLOCK_BITS}, BLOCK_SIZE, layout::{DiskInode, SuperBlock, DiskInodeType}, cache_man::{get_block_cache, sync_block_cache}, vfs::VirtInode};
+use crate::{BlockDev, bitmap::{Bitmap, BLOCK_BITS}, BLOCK_SIZE, layout::{DiskInode, SuperBlock, DiskInodeType}, cache_man::{get_block_cache, sync_block_cache}, vfs::VirtInode};
 
 pub struct EzFileSys {
-    pub block_dev: Arc<dyn BlockDevice>,
+    pub block_dev: Arc<dyn BlockDev>,
     pub inode_bitmap: Bitmap,
     pub data_bitmap: Bitmap,
     inode_start: u32,
@@ -16,7 +16,7 @@ pub struct EzFileSys {
 type DataBlock = [u8; BLOCK_SIZE];
 impl EzFileSys {
     pub fn new(
-        block_dev: Arc<dyn BlockDevice>,
+        block_dev: Arc<dyn BlockDev>,
         total_blocks: u32,
         inode_bitmap_blocks: u32
     ) -> Arc<Mutex<Self>> {
@@ -70,7 +70,7 @@ impl EzFileSys {
             })
     }
 
-    pub fn from_device(block_dev: Arc<dyn BlockDevice>) -> Arc<Mutex<Self>> {
+    pub fn from_device(block_dev: Arc<dyn BlockDev>) -> Arc<Mutex<Self>> {
         get_block_cache(0, Arc::clone(&block_dev))
             .lock()
             .read(0, |super_blk: &SuperBlock| {

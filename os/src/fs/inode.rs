@@ -79,6 +79,7 @@ impl OSInode {
 impl File for OSInode {
     fn readable(&self) -> bool { self.readable }
     fn writable(&self) -> bool { self.writable }
+    fn seekable(&self) -> bool { true }
     fn read(&self, mut buf: crate::mm::pagetab::UserBuffer) -> usize {
         let mut inner = self.inner.get_refmut();
         let mut tot_read_sz = 0usize;
@@ -103,11 +104,19 @@ impl File for OSInode {
         }
         tot_write_sz
     }
+    fn seek(&self, offset: isize, whence: usize) {
+        let mut inner = self.inner.get_refmut();
+        if whence == 0 {
+            inner.offset = offset as usize;
+        } else {
+            inner.offset += offset as usize;
+        }
+    }
 }
 
 lazy_static! {
     pub static ref ROOT_INODE: Arc<VirtInode> = {
-        let efs = EzFileSys::from_device(BLOCK_DEV.clone());
+        let efs = EzFileSys::from_device(BLOCK_DEV.get_refmut().as_ref().unwrap().clone());
         Arc::new(EzFileSys::root_vinode(&efs))
     };
 }

@@ -1,4 +1,5 @@
 use super::SerialDevice;
+use crate::drivers::Device;
 use crate::sync::{CondVar, UThrCell};
 use crate::task::processor::schedule;
 use alloc::collections::VecDeque;
@@ -157,10 +158,12 @@ impl<const BASE_ADDR: usize> NS16550a<BASE_ADDR> {
         }
     }
 
-    pub fn read_buffer_is_empty(&self) -> bool {
+    /*
+    pub fn is_empty(&self) -> bool {
         self.inner
             .then(|inner| inner.read_buffer.is_empty())
     }
+    */
 }
 
 impl<const BASE_ADDR: usize> SerialDevice for NS16550a<BASE_ADDR> {
@@ -186,6 +189,9 @@ impl<const BASE_ADDR: usize> SerialDevice for NS16550a<BASE_ADDR> {
         let mut inner = self.inner.get_refmut();
         inner.ns16550a.write(ch);
     }
+}
+
+impl<const BASE_ADDR: usize> Device for NS16550a<BASE_ADDR> {
     fn handle_irq(&self) {
         debug!("Serial Device Handling IRQ");
         let mut count = 0;

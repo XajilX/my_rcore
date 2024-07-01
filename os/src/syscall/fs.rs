@@ -86,6 +86,22 @@ pub fn sys_close(fd: usize) -> isize {
     }
 }
 
+pub fn sys_seek(fd: usize, offset: isize, whence: usize) -> isize {
+    let task = curr_proc();
+    let inner = task.get_mutpart();
+    if let Some(file) = &inner.fd_table[fd] {
+        let file = file.clone();
+        if !file.seekable() {
+            return -1;
+        }
+        drop(inner);
+        file.seek(offset, whence);
+        0
+    } else {
+        -1
+    }
+}
+
 pub fn sys_dup(fd: usize) -> isize {
     let proc = curr_proc();
     let mut inner = proc.get_mutpart();

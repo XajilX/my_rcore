@@ -67,6 +67,8 @@ impl File for Pipe {
 
     fn writable(&self) -> bool { self.writable }
 
+    fn seekable(&self) -> bool { false }
+
     fn read(&self, buf: crate::mm::pagetab::UserBuffer) -> usize {
         assert!(self.readable);
         let len_buf = buf.len();
@@ -126,6 +128,10 @@ impl File for Pipe {
                 }
             }
         }
+    }
+
+    fn seek(&self, _offset: isize, _whence: usize) {
+        panic!("Unable to seek");
     }
 }
 

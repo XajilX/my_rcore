@@ -2,6 +2,7 @@
 #![no_main]
 #![feature(panic_info_message)]
 #![feature(alloc_error_handler)]
+#![feature(trait_upcasting)]
 extern crate alloc;
 
 #[macro_use]
@@ -21,7 +22,6 @@ mod fs;
 
 use core::arch::global_asm;
 
-use drivers::SERIAL_DEV;
 use lazy_static::lazy_static;
 use sync::UThrCell;
 global_asm!(include_str!("entry.asm"));
@@ -38,9 +38,8 @@ pub fn rust_main() -> ! {
     clr_bss();
     logging::init();
     mm::init();
-    SERIAL_DEV.init();
-    println!("[kernel] UART init success");
     drivers::device_init();
+    println!("[kernel] Devices init success");
     trap::init();
     println!("[kernel] trap entry set");
     trap::enable_timer_int();

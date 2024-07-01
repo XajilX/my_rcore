@@ -8,8 +8,10 @@ pub mod console;
 pub mod signum;
 mod syscall;
 mod lang_items;
+pub mod graphics;
 
 pub use signum::*;
+pub use graphics::Display;
 
 /// ------------------------------------------------------------
 /// ------------------------------------------------------------
@@ -76,6 +78,10 @@ pub fn read(fd: usize, buffer: &[u8]) -> isize {
 
 pub fn write(fd: usize, buffer: &[u8]) -> isize {
     sys_write(fd, buffer)
+}
+
+pub fn seek(fd: usize, offset: isize, whence: usize) -> isize {
+    sys_seek(fd, offset, whence)
 }
 
 pub fn exit(exit_code: i32) -> ! {
@@ -244,4 +250,14 @@ pub fn condvar_signal(condvar_id: usize) {
 }
 pub fn condvar_wait(condvar_id: usize, mutex_id: usize) {
     sys_condvar_wait(condvar_id, mutex_id);
+}
+pub fn get_resolution() -> (u32, u32) {
+    let v = sys_get_gpures();
+    ((v >> 32) as u32, (v & 0xffffffff) as u32 )
+}
+pub fn get_fbfd() -> isize {
+    sys_get_fbfd()
+}
+pub fn get_inputevent() -> u64 {
+    sys_input_event() as u64
 }

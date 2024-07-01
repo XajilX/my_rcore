@@ -9,6 +9,7 @@ edition = "2021"
 buddy_system_allocator = "0.6"
 bitflags = "1.2.1"
 lazy_static = { version = "1.4", features = ["spin_no_std"] }
+embedded-graphics = "0.8.1"
 
 [profile.release]
 debug = true

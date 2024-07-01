@@ -1,4 +1,5 @@
 mod process;
+mod gui;
 use log::trace;
 use process::*;
 
@@ -11,11 +12,17 @@ use thread::*;
 mod sync;
 use sync::*;
 
+mod input;
+use input::*;
+
+use crate::syscall::gui::{sys_get_fbfd, sys_get_gpures};
+
 
 const SYSCALL_DUP: usize = 24;
 const SYSCALL_OPEN: usize = 56;
 const SYSCALL_CLOSE: usize = 57;
 const SYSCALL_PIPE: usize = 59;
+const SYSCALL_SEEK: usize = 62;
 const SYSCALL_READ: usize = 63;
 const SYSCALL_WRITE: usize = 64;
 const SYSCALL_EXIT: usize = 93;
@@ -42,6 +49,9 @@ const SYSCALL_SEMAMINUS: usize = 1022;
 const SYSCALL_CONDVCREATE: usize = 1030;
 const SYSCALL_CONDVSIGNAL: usize = 1031;
 const SYSCALL_CONDVWAIT: usize = 1032;
+const SYSCALL_GETGPURES: usize = 2000;
+const SYSCALL_GETFBFD: usize = 2001;
+const SYSCALL_INPUTEVENT: usize = 3000;
 
 
 pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
@@ -51,6 +61,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
         SYSCALL_OPEN => sys_open(args[0] as *const u8, args[1] as u32),
         SYSCALL_CLOSE => sys_close(args[0] as usize),
         SYSCALL_PIPE => sys_pipe(args[0] as *mut usize),
+        SYSCALL_SEEK => sys_seek(args[0], args[1] as isize, args[2]),
         SYSCALL_READ => sys_read(args[0], args[1] as *const u8, args[2]),
         SYSCALL_WRITE => sys_write(args[0], args[1] as *const u8, args[2]),
         SYSCALL_EXIT => sys_exit(args[0] as i32),
@@ -75,6 +86,9 @@ pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
         SYSCALL_CONDVCREATE => sys_condv_create(),
         SYSCALL_CONDVSIGNAL => sys_condv_signal(args[0]),
         SYSCALL_CONDVWAIT => sys_condv_wait(args[0], args[1]),
+        SYSCALL_GETGPURES => sys_get_gpures(),
+        SYSCALL_GETFBFD => sys_get_fbfd(),
+        SYSCALL_INPUTEVENT => sys_input_event(),
         _ => panic!("Unsupported syscall_id: {}", syscall_id)
     }
 }

@@ -66,6 +66,8 @@ impl File for EventFd {
 
     fn writable(&self) -> bool { true }
 
+    fn seekable(&self) -> bool { false }
+
     fn read(&self, buf: crate::mm::pagetab::UserBuffer) -> usize {
         if let Some(mut var) = self.try_read() {
             buf.into_iter().for_each(|b| unsafe {
@@ -150,6 +152,10 @@ impl File for EventFd {
                 }
             }
         }
+    }
+
+    fn seek(&self, _offset: isize, _whence: usize) {
+        panic!("Unable to seek");
     }
 }
 

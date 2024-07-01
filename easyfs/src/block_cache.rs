@@ -2,16 +2,16 @@ use core::mem::size_of;
 
 use alloc::sync::Arc;
 
-use crate::{BLOCK_SIZE, BlockDevice};
+use crate::{BLOCK_SIZE, BlockDev};
 
 pub struct BlockCache {
     cache: [u8; BLOCK_SIZE],
     block_id: usize,
-    block_dev: Arc<dyn BlockDevice>,
+    block_dev: Arc<dyn BlockDev>,
     modified: bool
 }
 impl BlockCache {
-    pub fn new(block_id: usize, block_dev: Arc<dyn BlockDevice>) -> Self {
+    pub fn new(block_id: usize, block_dev: Arc<dyn BlockDev>) -> Self {
         let mut cache = [0u8; BLOCK_SIZE];
         block_dev.read_block(block_id, &mut cache);
         Self {

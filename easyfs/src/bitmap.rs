@@ -1,6 +1,6 @@
 use alloc::sync::Arc;
 
-use crate::{BLOCK_SIZE, BlockDevice, cache_man::get_block_cache};
+use crate::{BLOCK_SIZE, BlockDev, cache_man::get_block_cache};
 
 pub const BLOCK_BITS: usize = BLOCK_SIZE * 8;
 pub struct Bitmap {
@@ -13,7 +13,7 @@ impl Bitmap {
             start_block_id, blocks
         }
     }
-    pub fn alloc(&self, block_dev: &Arc<dyn BlockDevice>) -> Option<usize> {
+    pub fn alloc(&self, block_dev: &Arc<dyn BlockDev>) -> Option<usize> {
         (0..self.blocks).find_map(|id|
             get_block_cache(id + self.start_block_id, Arc::clone(block_dev))
                 .lock()
@@ -35,7 +35,7 @@ impl Bitmap {
         let (block_pos, inner_pos) = (pos / BLOCK_BITS, pos % BLOCK_BITS);
         (block_pos, inner_pos >> 6, inner_pos & 63)
     }
-    pub fn dealloc(&self, block_dev: &Arc<dyn BlockDevice>, pos: usize) {
+    pub fn dealloc(&self, block_dev: &Arc<dyn BlockDev>, pos: usize) {
         let (block_pos, bits_pos, inner_pos) = Self::pos_decomp(pos);
         get_block_cache(block_pos + self.start_block_id, Arc::clone(block_dev))
             .lock()

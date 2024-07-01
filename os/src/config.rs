@@ -14,6 +14,7 @@ pub const CLOCK_FREQ: usize = 12500000;
 
 pub const VIRT_PLIC: usize = 0x0c00_0000;
 pub const VIRT_UART: usize = 0x1000_0000;
+pub const VIRT_MMIO1: usize = 0x10001000;
 
 pub const MMIO: &[(usize, usize)] = &[
     (0x2000000, 0x10000),

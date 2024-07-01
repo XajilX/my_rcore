@@ -13,6 +13,8 @@ impl File for Stdin {
     
     fn writable(&self) -> bool { false }
     
+    fn seekable(&self) -> bool { false }
+
     fn read(&self, mut buf: crate::mm::pagetab::UserBuffer) -> usize {
         assert_eq!(buf.len(), 1);
         let ch = SERIAL_DEV.read();
@@ -25,12 +27,18 @@ impl File for Stdin {
     fn write(&self, _buf: crate::mm::pagetab::UserBuffer) -> usize {
         panic!("Cannot write to stdin!");
     }
+
+    fn seek(&self, _offset: isize, _whence: usize) {
+        panic!("Unable to seek");
+    }
 }
 
 impl File for Stdout {
     fn readable(&self) -> bool { false }
 
     fn writable(&self) -> bool { true }
+
+    fn seekable(&self) -> bool { false }
 
     fn read(&self, _buf: crate::mm::pagetab::UserBuffer) -> usize {
         panic!("Cannot read from stdout!");
@@ -41,5 +49,9 @@ impl File for Stdout {
             print!("{}", from_utf8(*slice).unwrap())
         }
         buf.len()
+    }
+
+    fn seek(&self, _offset: isize, _whence: usize) {
+        panic!("Unable to seek");
     }
 }
