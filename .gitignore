@@ -1,5 +1,4 @@
-*/target
-os/src/link_app.S
-target
 os/riscv64-virt.dts
 os/log.txt
+os/src/link_app.S
+*/target
