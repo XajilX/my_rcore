@@ -25,7 +25,6 @@ use core::arch::global_asm;
 use lazy_static::lazy_static;
 use sync::UThrCell;
 global_asm!(include_str!("entry.asm"));
-global_asm!(include_str!("link_app.S"));
 
 lazy_static! {
     pub static ref DEV_NONBLOCKING_ACCESS: UThrCell<bool> = {

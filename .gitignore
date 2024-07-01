@@ -1,3 +1,2 @@
-*.dts
-/os/log.txt
+/**/Cargo.lock
 /**/target
