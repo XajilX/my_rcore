@@ -50,7 +50,6 @@ fn main() -> i32 {
                 args_addr.push(0 as *const u8);
                 match fork() {
                     0 => {
-
                         if let Some(path) = input {
                             let input_fd = open(path.to_str().unwrap(), OpenFlags::RDONLY);
                             if input_fd == -1 {

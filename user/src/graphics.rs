@@ -18,7 +18,7 @@ impl Display {
             res: Size::new(xres, yres)
         }
     }
-    pub fn render(&self, f: impl Fn(u32, u32) -> Rgb888) {
+    pub fn render(&self, mut f: impl FnMut(u32, u32) -> Rgb888) {
         let mut buf = [Rgb888::new(0, 0, 0); 512];
         let mut idx = 0;
         for y in 0..self.res.height {

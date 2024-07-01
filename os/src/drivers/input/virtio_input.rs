@@ -59,6 +59,7 @@ impl Device for VirtioInput {
                 res = (event.event_type as u64) << 48 |
                     (event.code as u64) << 32 |
                     (event.value as u64);
+                inner.events.push_back(res);
             }
         });
         if cnt > 0 {

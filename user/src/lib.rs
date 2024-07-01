@@ -9,7 +9,9 @@ pub mod signum;
 mod syscall;
 mod lang_items;
 pub mod graphics;
+mod input;
 
+use input::InputEvent;
 pub use signum::*;
 pub use graphics::Display;
 
@@ -258,6 +260,6 @@ pub fn get_resolution() -> (u32, u32) {
 pub fn get_fbfd() -> isize {
     sys_get_fbfd()
 }
-pub fn get_inputevent() -> u64 {
-    sys_input_event() as u64
+pub fn get_inputevent() -> InputEvent {
+    InputEvent::from(sys_input_event() as u64)
 }
